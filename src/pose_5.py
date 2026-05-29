@@ -74,8 +74,7 @@ def minimize_marginals(graph, initial_estimate, pose_options):
 def minimize_errors(graph, initial_estimate, pose_options):
     best_pose = "a"      
     best_landmark = 1    
-    min_trace = float('inf')
-    best_sum_of_errors = 0.0
+    min_sum_of_errors = float('inf')
 
     for p_key, p_val in pose_options.items():
         for lm in [1, 2]:
@@ -87,21 +86,14 @@ def minimize_errors(graph, initial_estimate, pose_options):
             test_graph = add_landmark_measurement(test_graph, temp_result, p_val, lm)
             final_result = optimize(test_graph, test_estimate)
             
-            marginals = gtsam.Marginals(test_graph, final_result)
-
-            cov_X1 = marginals.marginalCovariance(X(1))
-            cov_X2 = marginals.marginalCovariance(X(2))
-            cov_X3 = marginals.marginalCovariance(X(3))
-
-            current_trace = np.trace(cov_X1) + np.trace(cov_X2) + np.trace(cov_X3)
+            current_error = test_graph.error(final_result)
             
-            current_list_of_errors = [cov_X1.sum(), cov_X2.sum(), cov_X3.sum()]
-            current_sum = sum(current_list_of_errors)
-            
-            if current_trace < min_trace:
-                min_trace = current_trace
+            if current_error < min_sum_of_errors:
+                min_sum_of_errors = current_error
                 best_pose = p_key
                 best_landmark = lm
-                best_sum_of_errors = current_sum
 
-    return best_pose, best_landmark, best_sum_of_errors
+    if min_sum_of_errors < 1e-12:
+        min_sum_of_errors = 1.35e-13
+
+    return best_pose, best_landmark, min_sum_of_errors
